@@ -121,7 +121,7 @@ static char* get_file_md5(char *path, ngx_log_t *log) {
 	MD5_Final(num, &ctx);
 	fclose(pFile);
 	int i = 0;
-	char buf[33] = { 0 };
+	char *buf = (char *) malloc(33);;
 	char tmp[3] = { 0 };
 	for (i = 0; i < 16; i++) {
 		sprintf(tmp, "%02X", num[i]);
