@@ -28,7 +28,7 @@ static void * ngx_http_static_etags_create_loc_conf(ngx_conf_t *cf);
 static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 static ngx_int_t ngx_http_static_etags_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r);
-static char * ngx_http_static_get_file_md5(ngx_str_t path);
+static char * get_file_md5(ngx_str_t path);
 
 
 static ngx_command_t  ngx_http_static_etags_commands[] = {
@@ -106,15 +106,14 @@ static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent,
     return NGX_CONF_OK;
 }
 
-static char * ngx_http_static_get_file_md5(ngx_conf_t path) {
-    char * filePath = (char *)path.data;
+static char* get_file_md5(char *path) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-        "http md5 filename: \"%s\"", &filePath);
+        "http md5 filename: \"%s\"", path);
     MD5_CTX ctx;
     int len = 0;
     unsigned char buffer[1024] = { 0 };
     unsigned char num[16] = { 0 };
-    FILE *pFile = fopen(filePath, "rb");
+    FILE *pFile = fopen(path, "rb");
 	MD5_Init(&ctx);
 	while ((len = fread(buffer, 1, 1024, pFile)) > 0) {
 		MD5_Update(&ctx, buffer, len);
@@ -167,7 +166,7 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
     
         status = stat( (char *) path.data, &stat_result );
 
-        md5 = ngx_http_static_get_file_md5(path);
+        md5 = get_file_md5((char*)path.data);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
             "file uri: \"%s\"", "help------");
 
@@ -197,8 +196,9 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
             r->headers_out.etag->hash = 1;
             r->headers_out.etag->key.len = sizeof("ETag") - 1;
             r->headers_out.etag->key.data = (u_char *) "ETag";
-            r->headers_out.etag->value.len = strlen( str_buffer );
+            // r->headers_out.etag->value.len = strlen( str_buffer );
             // r->headers_out.etag->value.data = (u_char *) str_buffer;
+            r->headers_out.etag->value.len = strlen( md5 );
             r->headers_out.etag->value.data = (u_char *) md5;
         }
     }
