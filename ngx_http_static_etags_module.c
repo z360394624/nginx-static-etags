@@ -28,7 +28,7 @@ static void * ngx_http_static_etags_create_loc_conf(ngx_conf_t *cf);
 static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 static ngx_int_t ngx_http_static_etags_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r);
-static char * get_file_md5(char *path);
+static char * get_file_md5(char *path, ngx_log_t *log);
 
 
 static ngx_command_t  ngx_http_static_etags_commands[] = {
@@ -106,7 +106,7 @@ static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent,
     return NGX_CONF_OK;
 }
 
-static char* get_file_md5(char *path) {
+static char* get_file_md5(char *path, ngx_log_t *log) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
         "http md5 filename: \"%s\"", path);
     MD5_CTX ctx;
@@ -166,7 +166,7 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
     
         status = stat( (char *) path.data, &stat_result );
 
-        md5 = get_file_md5((char*)path.data);
+        md5 = get_file_md5((char*)path.data, log);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
             "file uri: \"%s\"", "help------");
 
