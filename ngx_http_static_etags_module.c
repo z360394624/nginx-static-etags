@@ -8,6 +8,9 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <sys/stat.h>
+#include <openssl/ssl.h>
+#include <openssl/hmac.h>
+#include <openssl/md5.h>
 
 /*
  *  Two configuration elements: `enable_etags` and `etag_format`, specified in
@@ -25,6 +28,8 @@ static void * ngx_http_static_etags_create_loc_conf(ngx_conf_t *cf);
 static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 static ngx_int_t ngx_http_static_etags_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r);
+static char * ngx_http_static_get_file_md5(ngx_str_t path);
+
 
 static ngx_command_t  ngx_http_static_etags_commands[] = {
     { ngx_string( "FileETag" ),
@@ -101,6 +106,31 @@ static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent,
     return NGX_CONF_OK;
 }
 
+static char * ngx_http_static_get_file_md5(ngx_conf_t path) {
+    char * filePath = (char *)path.data;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+        "http md5 filename: \"%s\"", &filePath);
+    MD5_CTX ctx;
+    int len = 0;
+    unsigned char buffer[1024] = { 0 };
+    unsigned char num[16] = { 0 };
+    FILE *pFile = fopen(&filePath, "rb");
+	MD5_Init(&ctx);
+	while ((len = fread(buffer, 1, 1024, pFile)) > 0) {
+		MD5_Update(&ctx, buffer, len);
+	}
+	MD5_Final(num, &ctx);
+	fclose(pFile);
+	int i = 0;
+	char buf[33] = { 0 };
+	char tmp[3] = { 0 };
+	for (i = 0; i < 16; i++) {
+		sprintf(tmp, "%02X", num[i]);
+		strcat(buf, tmp);
+    }
+    return buf;
+}
+
 static ngx_int_t ngx_http_static_etags_init(ngx_conf_t *cf) {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_static_etags_header_filter;
@@ -118,6 +148,7 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
     struct stat                         stat_result;
     char                               *str_buffer;
     int                                 str_len;
+    char                               *md5;
 
     log = r->connection->log;
     
@@ -135,7 +166,9 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
                         "http filename: \"%s\"", path.data);
     
         status = stat( (char *) path.data, &stat_result );
-    
+
+        md5 = ngx_http_static_get_file_md5(path);
+
         // Did the `stat` succeed?
         if ( 0 == status) {
             str_len    = 1000;
@@ -143,7 +176,7 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
             sprintf( str_buffer, (char *) loc_conf->etag_format.data, r->uri.data, (unsigned int) stat_result.st_size, (unsigned int) stat_result.st_mtime );
             
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                "file uri: \"%s\"", r->uri.data);
+                "file uri: \"%s\"", (char *)r->uri.data);
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                             "stat returned: \"%d\"", status);
@@ -163,7 +196,8 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
             r->headers_out.etag->key.len = sizeof("ETag") - 1;
             r->headers_out.etag->key.data = (u_char *) "ETag";
             r->headers_out.etag->value.len = strlen( str_buffer );
-            r->headers_out.etag->value.data = (u_char *) str_buffer;
+            // r->headers_out.etag->value.data = (u_char *) str_buffer;
+            r->headers_out.etag->value.data = (u_char *) md5;
         }
     }
 
