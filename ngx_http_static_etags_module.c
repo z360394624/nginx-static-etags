@@ -114,7 +114,7 @@ static char * ngx_http_static_get_file_md5(ngx_conf_t path) {
     int len = 0;
     unsigned char buffer[1024] = { 0 };
     unsigned char num[16] = { 0 };
-    FILE *pFile = fopen(&filePath, "rb");
+    FILE *pFile = fopen(filePath, "rb");
 	MD5_Init(&ctx);
 	while ((len = fread(buffer, 1, 1024, pFile)) > 0) {
 		MD5_Update(&ctx, buffer, len);
@@ -168,6 +168,8 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
         status = stat( (char *) path.data, &stat_result );
 
         md5 = ngx_http_static_get_file_md5(path);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+            "file uri: \"%s\"", "help------");
 
         // Did the `stat` succeed?
         if ( 0 == status) {
