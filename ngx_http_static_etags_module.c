@@ -122,7 +122,7 @@ static char* get_file_md5(char *path, ngx_log_t *log) {
 	fclose(pFile);
 	int i = 0;
 	char *buf = (char *) malloc(33);;
-	char tmp[3] = { 0 };
+	char tmp[3];
 	for (i = 0; i < 16; i++) {
 		sprintf(tmp, "%02X", num[i]);
 		strcat(buf, tmp);
