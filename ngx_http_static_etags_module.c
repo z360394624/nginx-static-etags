@@ -160,8 +160,8 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
                 return NGX_ERROR;
             }
             r->headers_out.etag->hash = 1;
-            r->headers_out.etag->key.len = sizeof("Etag") - 1;
-            r->headers_out.etag->key.data = (u_char *) "Etag";
+            r->headers_out.etag->key.len = sizeof("ETag") - 1;
+            r->headers_out.etag->key.data = (u_char *) "ETag";
             r->headers_out.etag->value.len = strlen( str_buffer );
             r->headers_out.etag->value.data = (u_char *) str_buffer;
         }
