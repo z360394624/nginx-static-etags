@@ -143,6 +143,9 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
             sprintf( str_buffer, (char *) loc_conf->etag_format.data, r->uri.data, (unsigned int) stat_result.st_size, (unsigned int) stat_result.st_mtime );
             
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                "file uri: \"%X\"", r->uri.data);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                             "stat returned: \"%d\"", status);
     
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
