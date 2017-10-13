@@ -201,7 +201,7 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
             // r->headers_out.etag->value.len = strlen( str_buffer );
             // r->headers_out.etag->value.data = (u_char *) str_buffer;
             r->headers_out.etag->value.len = strlen( md5 );
-            r->headers_out.etag->value.data = (u_char *) md5;
+            r->headers_out.etag->value.data = md5;
         }
     }
 
