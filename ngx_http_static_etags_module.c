@@ -110,26 +110,27 @@ static char* get_file_md5(char *path, ngx_log_t *log) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
         "http md5 filename: \"%s\"", path);
     MD5_CTX ctx;
+    MD5_Init(&ctx);
     int len = 0;
-    unsigned char buffer[1024] = { 0 };
-    unsigned char num[16] = { 0 };
+    unsigned char buffer[1024];
+    unsigned char num[16];
     FILE *pFile = fopen(path, "rb");
-	MD5_Init(&ctx);
-	while ((len = fread(buffer, 1, 1024, pFile)) > 0) {
+	while (feof(pFile)) {
+        len = fread(buffer, 1, 1024, pFile)
 		MD5_Update(&ctx, buffer, len);
 	}
 	MD5_Final(num, &ctx);
 	fclose(pFile);
 	int i = 0;
-	char *buf = (char *) malloc(33);;
-	char tmp[3];
+	char md5Str[32] = {0};
+	char *temp = (char *) malloc(2*sizeof(char));
 	for (i = 0; i < 16; i++) {
-		sprintf(tmp, "%02X", num[i]);
-		strcat(buf, tmp);
+		sprintf(temp, "%02X", num[i]);
+		strcat(md5Str, temp);
     }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
         "http md5 filename: \"%s\"", buf);
-    return buf;
+    return md5Str;
 }
 
 static ngx_int_t ngx_http_static_etags_init(ngx_conf_t *cf) {
