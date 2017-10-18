@@ -116,7 +116,7 @@ static char* get_file_md5(char *path, ngx_log_t *log) {
     FILE *pFile = fopen(path, "rb");
     int len = 0;
 	while (feof(pFile)) {
-        len = fread(buffer, 1, 1024, pFile)
+        len = fread(buffer, 1, 1024, pFile);
 		MD5_Update(&ctx, buffer, len);
 	}
 	MD5_Final(num, &ctx);
