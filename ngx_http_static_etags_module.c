@@ -131,7 +131,7 @@ static char* get_file_md5(char *path, ngx_log_t *log) {
     }
     memcpy(md5, md5Str, 33);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-        "http md5 filename: \"%s\"", buf);
+        "http md5 filename: \"%s\"", md5);
     return md5;
 }
 
