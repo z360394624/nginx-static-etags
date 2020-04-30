@@ -28,7 +28,7 @@ static void * ngx_http_static_etags_create_loc_conf(ngx_conf_t *cf);
 static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 static ngx_int_t ngx_http_static_etags_init(ngx_conf_t *cf);
 static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r);
-static char * get_file_md5(char *path, ngx_log_t *log);
+static char * get_file_md5(ngx_pool_t *pool, char *path, ngx_log_t *log);
 
 
 static ngx_command_t  ngx_http_static_etags_commands[] = {
@@ -90,7 +90,8 @@ static void * ngx_http_static_etags_create_loc_conf(ngx_conf_t *cf) {
     return conf;
 }
 
-static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
+static char * 
+ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_http_static_etags_loc_conf_t *prev = parent;
     ngx_http_static_etags_loc_conf_t *conf = child;
 
@@ -106,7 +107,8 @@ static char * ngx_http_static_etags_merge_loc_conf(ngx_conf_t *cf, void *parent,
     return NGX_CONF_OK;
 }
 
-static char* get_file_md5(char *path, ngx_log_t *log) {
+static char* 
+get_file_md5(ngx_pool_t *pool, char *path, ngx_log_t *log) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
         "http md5 filename: \"%s\"", path);
     MD5_CTX ctx;
@@ -122,16 +124,25 @@ static char* get_file_md5(char *path, ngx_log_t *log) {
 	MD5_Final(num, &ctx);
 	fclose(pFile);
 	int i = 0;
-	char md5Str[32] = {0};
-    char *temp = (char *) malloc(2*sizeof(char));
-    char *md5 = (char *) malloc(33*sizeof(char));
+	char md5Str[34] = {0};
+	// char *temp = (char *) malloc(2*sizeof(char));
+    // char *md5 = (char *) malloc(33*sizeof(char));
+	char *temp = (char*) ngx_palloc(pool, 3*sizeof(char));
+	char *md5  = (char*) ngx_palloc(pool, 36*sizeof(char));
+	memset(temp, 0, 3);
+	memset(md5, 0, 36);
+
 	for (i = 0; i < 16; i++) {
 		sprintf(temp, "%02X", num[i]);
         strcat(md5Str, temp);
     }
-    memcpy(md5, md5Str, 33);
+
+	md5[0] = '"';
+    memcpy(md5 + 1, md5Str, 33);
+	md5[strlen(md5)] = '"';
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-        "http md5 filename: \"%s\"", md5);
+        "http md5 filename: %s", md5);
     return md5;
 }
 
@@ -155,7 +166,6 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
     char                               *md5;
 
     log = r->connection->log;
-    
     loc_conf = ngx_http_get_module_loc_conf( r, ngx_http_static_etags_module );
     
     // Is the module active?
@@ -165,21 +175,19 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                         "http filename: \"%s\"", path.data);
     
         status = stat( (char *) path.data, &stat_result );
 
-        md5 = get_file_md5((char*)path.data, log);
+        md5 = get_file_md5(r->pool, (char*)path.data, log);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
             "file uri: \"%s\"", "help------");
-
         // Did the `stat` succeed?
         if ( 0 == status) {
-            str_len    = 1000;
-            str_buffer = malloc( str_len + sizeof(char) );
-            sprintf( str_buffer, (char *) loc_conf->etag_format.data, r->uri.data, (unsigned int) stat_result.st_size, (unsigned int) stat_result.st_mtime );
+            // str_len    = 1000;
+            // str_buffer = malloc( str_len + sizeof(char));
+            // sprintf( str_buffer, (char *) loc_conf->etag_format.data, r->uri.data, (unsigned int) stat_result.st_size, (unsigned int) stat_result.st_mtime );
             
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                 "file uri: \"%s\"", (char *)r->uri.data);
@@ -191,20 +199,26 @@ static ngx_int_t ngx_http_static_etags_header_filter(ngx_http_request_t *r) {
                          "st_size: '%d'", stat_result.st_size);
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                          "st_mtime: '%d'", stat_result.st_mtime);
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+            // ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                          "Concatted: '%s'", str_buffer );
-                    
-            r->headers_out.etag = ngx_list_push(&r->headers_out.headers);
+
+			/* two condition, if has, cover, if not, alloc and assignment*/
+			if (r->headers_out.etag == NULL)
+			{
+				r->headers_out.etag = ngx_list_push(&r->headers_out.headers);
+			}
+
             if (r->headers_out.etag == NULL) {
                 return NGX_ERROR;
             }
+
             r->headers_out.etag->hash = 1;
             r->headers_out.etag->key.len = sizeof("ETag") - 1;
             r->headers_out.etag->key.data = (u_char *) "ETag";
             // r->headers_out.etag->value.len = strlen( str_buffer );
             // r->headers_out.etag->value.data = (u_char *) str_buffer;
-            r->headers_out.etag->value.len = strlen( md5 );
-            r->headers_out.etag->value.data = (u_char *) md5;
+            r->headers_out.etag->value.len = strlen(md5);
+            r->headers_out.etag->value.data = (u_char *)md5;
         }
     }
 
